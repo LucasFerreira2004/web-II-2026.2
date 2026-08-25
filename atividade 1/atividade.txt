@@ -1,0 +1,4 @@
+Consuma a API do pokemon.
+- criar uma página pokemon@ A cada clieuqe na página (em qualquer lugar) deve ser inserido um novo pokemon. 
+- os pokemons de id ímpar devem ter borda preta e os pares borda vermelha. 
+- endpoint: https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png
