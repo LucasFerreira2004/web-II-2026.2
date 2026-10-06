@@ -1,4 +1,5 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
+import cors from 'cors';
 import mongoose, { Model, Schema } from 'mongoose';
 import dotenv from 'dotenv';
 
@@ -7,6 +8,8 @@ dotenv.config();
 const app: Express = express();
 const PORT = Number(process.env.PORT) || 3001;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/pessoas';
+
+app.use(cors({ origin: '*' }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
