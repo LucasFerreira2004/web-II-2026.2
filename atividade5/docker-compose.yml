@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:16
+    container_name: person-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: person_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: person-api
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/person_db?schema=public
+      PORT: 3000
+    command: sh -c "npx prisma migrate deploy && npm run start"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
