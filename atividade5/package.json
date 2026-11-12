@@ -1,0 +1,35 @@
+{
+  "name": "atividade5",
+  "version": "1.0.0",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch server.ts",
+    "build": "tsc --project tsconfig.json",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy"
+  },
+  "keywords": [
+    "express",
+    "prisma",
+    "postgresql",
+    "crud"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "API de pessoas com Express, Prisma e PostgreSQL",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "prisma": "^5.22.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "nodemon": "^3.1.14",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
