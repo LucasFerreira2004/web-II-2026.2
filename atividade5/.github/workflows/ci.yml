@@ -1,31 +1,36 @@
+
 name: CI
 
 on:
   push:
     branches: [main, master]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test-db-migration:
     runs-on: ubuntu-latest
 
+    env:
+      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      DATABASE_URL: postgresql://${{ vars.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ vars.POSTGRES_DB }}?schema=public
+
     services:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: person_db
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U postgres -d person_db"
+          --health-cmd="pg_isready -U ${{ vars.POSTGRES_USER }} -d ${{ vars.POSTGRES_DB }}"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
-
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/person_db?schema=public
 
     steps:
       - name: Checkout repository
@@ -46,8 +51,64 @@ jobs:
       - name: Build TypeScript app
         run: npm run build
 
+      - name: Build Docker image
+        run: docker build -t person-api:ci .
+
       - name: Run Prisma migrations
         run: npx prisma migrate deploy
 
+      - name: Check Prisma migrations status
+        run: npx prisma migrate status
+
       - name: Check database structure
-        run: npx prisma db execute --stdin <<< "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';"
+        run: |
+          TABLE_COUNT=$(docker run --rm \
+            --network host \
+            -e PGPASSWORD="$POSTGRES_PASSWORD" \
+            postgres:16 \
+            psql -h localhost \
+              -U "$POSTGRES_USER" \
+              -d "$POSTGRES_DB" \
+              -v ON_ERROR_STOP=1 \
+              -tAc "
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                  AND table_type = 'BASE TABLE'
+                  AND table_name <> '_prisma_migrations';
+              ")
+
+          echo "Application tables found: $TABLE_COUNT"
+
+          if [ "$TABLE_COUNT" -eq 0 ]; then
+            echo "ERROR: No application tables were created."
+            exit 1
+          fi
+
+          echo "Database structure validated."
+
+      - name: Check applied migrations
+        run: |
+          MIGRATION_COUNT=$(docker run --rm \
+            --network host \
+            -e PGPASSWORD="$POSTGRES_PASSWORD" \
+            postgres:16 \
+            psql -h localhost \
+              -U "$POSTGRES_USER" \
+              -d "$POSTGRES_DB" \
+              -v ON_ERROR_STOP=1 \
+              -tAc "
+                SELECT COUNT(*)
+                FROM _prisma_migrations
+                WHERE finished_at IS NOT NULL
+                  AND rolled_back_at IS NULL;
+              ")
+
+          echo "Applied migrations: $MIGRATION_COUNT"
+
+          if [ "$MIGRATION_COUNT" -eq 0 ]; then
+            echo "ERROR: No successful migrations found."
+            exit 1
+          fi
+
+          echo "Migrations validated."
